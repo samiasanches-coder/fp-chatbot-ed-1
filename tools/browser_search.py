@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from urllib.parse import quote_plus
+from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
@@ -28,7 +28,7 @@ class BrowserSearchTool(BaseTool):
             except Exception as exc:
                 return {"tool": self.name, "status": "error", "query": query, "message": str(exc)}
 
-        url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
+        url = f"https://duckduckgo.com/html/?q={query}"
         try:
             page = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
             page.raise_for_status()

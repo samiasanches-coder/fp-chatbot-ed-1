@@ -27,6 +27,7 @@ class Chatbot:
             from tools.calculator import CalculatorTool
             from tools.file_editor import FileEditorTool
             from tools.external_api import ExternalAPITool
+            from tools.chat_model import G4FChatModel
         except Exception:
             return
 
@@ -39,6 +40,7 @@ class Chatbot:
         self.registry.register("calculator", CalculatorTool())
         self.registry.register("file_editor", FileEditorTool())
         self.registry.register("external_api", ExternalAPITool())
+        self.registry.register("chat_model", G4FChatModel())
 
     def _guess_tool(self, message: str):
         lowered = message.lower()
@@ -60,7 +62,7 @@ class Chatbot:
             return "file_editor"
         if any(token in lowered for token in ["api", "call api", "http request"]):
             return "external_api"
-        return None
+        return "chat_model"
 
     def _dispatch_tool(self, tool_name: str, message: str):
         tool = self.registry.get(tool_name)
@@ -78,6 +80,15 @@ class Chatbot:
             return "I’m doing well and ready to help."
         if any(token in lower for token in ["bye", "goodbye"]):
             return "Goodbye! Your session is saved and I’ll be ready when you return."
+        model = self.registry.get("chat_model")
+        if model is not None:
+            try:
+                response = model.run(message)
+                if isinstance(response, dict):
+                    return response.get("content") or response.get("text") or "I’m here to help."
+                return str(response)
+            except Exception:
+                pass
         return (
             f"You said: '{message}'. I can help with voice, image generation, image reading, web search, file actions, "
             "and more as long as the feature is enabled in config/features.json."
@@ -88,7 +99,7 @@ class Chatbot:
         session.add_user_message(user_message)
 
         tool_name = self._guess_tool(user_message)
-        if tool_name:
+        if tool_name and tool_name != "chat_model":
             result = self._dispatch_tool(tool_name, user_message)
             response = json.dumps(result, indent=2, ensure_ascii=False) if isinstance(result, dict) else str(result)
         else:

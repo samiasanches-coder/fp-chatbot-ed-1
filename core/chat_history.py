@@ -1,5 +1,7 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
+
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -37,13 +39,12 @@ class SessionManager:
         path = self.get_session_path(session_id)
         if path.exists():
             payload = json.loads(path.read_text(encoding="utf-8"))
-            session = Session(
+            return Session(
                 session_id=payload.get("session_id", session_id),
                 user_message_history=payload.get("user_message_history", []),
                 assistant_message_history=payload.get("assistant_message_history", []),
                 metadata=payload.get("metadata", {}),
             )
-            return session
         return Session(session_id=session_id)
 
     def save_session(self, session: Session):
@@ -56,9 +57,5 @@ class SessionManager:
             return Session(session_id="default")
         return self.load_session(sessions[0].stem)
 
-    def append_history(self, session_id: str, role: str, message: str):
-        path = Path("data/chat_history.jsonl")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        entry = {"session_id": session_id, "role": role, "message": message}
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(entry) + "\n")
+    def list_sessions(self):
+        return [p.stem for p in sorted(self.storage_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)]

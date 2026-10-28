@@ -1,24 +1,29 @@
-from dataclasses import dataclass, field
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+from app.chatbot import Chatbot
+
+app = FastAPI(title="FP Gemini Edition 1 API")
+chatbot = Chatbot()
 
 
-@dataclass
-class Session:
-    session_id: str
-    user_message_history: list[str] = field(default_factory=list)
-    assistant_message_history: list[str] = field(default_factory=list)
-
-    def add_user_message(self, message: str):
-        self.user_message_history.append(message)
-
-    def add_assistant_message(self, message: str):
-        self.assistant_message_history.append(message)
+class ChatRequest(BaseModel):
+    session_id: str = "default"
+    message: str
 
 
-@dataclass
-class SessionManager:
-    sessions: dict[str, Session] = field(default_factory=dict)
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "fp-gemini-edition-1"}
 
-    def get_or_create(self, session_id: str) -> Session:
-        if session_id not in self.sessions:
-            self.sessions[session_id] = Session(session_id=session_id)
-        return self.sessions[session_id]
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    response = chatbot.respond(request.message, session_id=request.session_id)
+    return {"session_id": request.session_id, "response": response, "status": "ok"}
+
+
+@app.get("/sessions/{session_id}")
+def get_session(session_id: str):
+    session = chatbot.session_manager.load_session(session_id)
+    return session.to_dict()

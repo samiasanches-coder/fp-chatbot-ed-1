@@ -1,12 +1,13 @@
 # FP Gemini Edition 1
 
-A modular Python chatbot starter with a feature-toggle system for multi-modal tools.
+A modular Python chatbot starter with feature toggles for multimodal tools, chat persistence, and session resume.
 
 ## Included capabilities
 
-- chat conversation with session resume
-- conversation history saved to file
-- JSON-driven feature enablement
+- terminal chat interface
+- session save/load support
+- app-level chat history persistence
+- JSON-controlled tool enablement
 - TTS support
 - STT support
 - image generation
@@ -17,9 +18,9 @@ A modular Python chatbot starter with a feature-toggle system for multi-modal to
 - file editing helpers
 - external API hooks
 
-## Features config
+## Feature config
 
-The feature list is controlled in `config/features.json`.
+The feature list is controlled by `config/features.json`.
 
 Example:
 
@@ -46,19 +47,12 @@ pip install -r requirements.txt
 python run.py
 ```
 
-Then ask things like:
-- create a voice with a specific tone
-- generate an image of a cyberpunk city
-- read an image file
-- search the web for AI news
-- transcribe audio
-- calculate a math expression
+## Commands
+
+- `resume` to continue your last session
+- `help` for command hints
+- `exit` or `quit` to leave
 
 ## Session persistence
 
 The app saves session data to `data/sessions/` and chat history to `data/chat_history.jsonl`.
-Type `resume` in the CLI to continue the most recent session.
-
-## Architecture
-
-This project is structured so the interface, session management, tool registry, and feature toggles are separated into independent modules.

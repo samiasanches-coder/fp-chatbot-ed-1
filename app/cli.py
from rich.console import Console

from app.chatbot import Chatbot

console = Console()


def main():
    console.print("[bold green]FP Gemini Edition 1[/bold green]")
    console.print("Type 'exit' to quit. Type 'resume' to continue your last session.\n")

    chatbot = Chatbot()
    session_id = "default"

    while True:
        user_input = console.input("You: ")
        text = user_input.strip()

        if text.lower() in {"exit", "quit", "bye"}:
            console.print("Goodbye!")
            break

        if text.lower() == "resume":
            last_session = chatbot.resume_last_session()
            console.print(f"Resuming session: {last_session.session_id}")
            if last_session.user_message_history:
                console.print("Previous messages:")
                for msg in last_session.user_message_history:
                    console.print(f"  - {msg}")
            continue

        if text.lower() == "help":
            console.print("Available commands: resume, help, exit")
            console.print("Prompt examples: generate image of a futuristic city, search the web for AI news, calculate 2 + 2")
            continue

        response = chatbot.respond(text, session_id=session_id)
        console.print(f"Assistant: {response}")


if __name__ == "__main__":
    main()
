@@ -1,0 +1,112 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from core.chat_history import ChatHistoryStore
+from core.session import Session, SessionManager
+from tools.registry import ToolRegistry
+
+
+class Chatbot:
+    def __init__(self, features_path: str = "config/features.json"):
+        self.features_path = Path(features_path)
+        self.registry = ToolRegistry(str(self.features_path))
+        self.session_manager = SessionManager(storage_dir="data/sessions")
+        self.history_store = ChatHistoryStore(path="data/chat_history.jsonl")
+
+        self._register_builtin_tools()
+
+    def _register_builtin_tools(self):
+        try:
+            from tools.tts import TTSPlugin
+            from tools.stt import STTPlugin
+            from tools.image_gen import ImageGeneratorPlugin
+            from tools.vision import VisionPlugin
+            from tools.browser_search import BrowserSearchPlugin
+            from tools.voice_clone import VoiceClonePlugin
+            from tools.calculator import CalculatorPlugin
+            from tools.file_editor import FileEditorPlugin
+            from tools.external_api import ExternalApiPlugin
+        except Exception:
+            return
+
+        self.registry.register("tts", TTSPlugin())
+        self.registry.register("stt", STTPlugin())
+        self.registry.register("image_gen", ImageGeneratorPlugin())
+        self.registry.register("image_read", VisionPlugin())
+        self.registry.register("web_search", BrowserSearchPlugin())
+        self.registry.register("voice_clone", VoiceClonePlugin())
+        self.registry.register("calculator", CalculatorPlugin())
+        self.registry.register("file_editor", FileEditorPlugin())
+        self.registry.register("external_api", ExternalApiPlugin())
+
+    def _guess_tool(self, message: str):
+        lowered = message.lower()
+
+        if "generate image" in lowered or "make image" in lowered or "image of" in lowered:
+            return "image_gen"
+        if "read image" in lowered or "analyze image" in lowered or "describe image" in lowered:
+            return "image_read"
+        if "transcribe" in lowered or "speech to text" in lowered or "stt" in lowered:
+            return "stt"
+        if "tts" in lowered or "text to speech" in lowered or "say" in lowered and "voice" in lowered:
+            return "tts"
+        if "search the web" in lowered or "web search" in lowered or "look up" in lowered or "search for" in lowered:
+            return "web_search"
+        if "voice clone" in lowered or "clone voice" in lowered:
+            return "voice_clone"
+        if "calculate" in lowered or "math" in lowered or "sum" in lowered or "+" in message:
+            return "calculator"
+        if "write file" in lowered or "edit file" in lowered or "create file" in lowered:
+            return "file_editor"
+        if "api" in lowered or "call api" in lowered:
+            return "external_api"
+        return None
+
+    def _dispatch_tool(self, tool_name: str, message: str):
+        tool = self.registry.get(tool_name)
+        if tool is None:
+            return {"tool": tool_name, "status": "disabled", "message": "This tool is not enabled in config/features.json."}
+        return tool.run(message)
+
+    def _default_reply(self, message: str) -> str:
+        text = message.strip()
+        lower = text.lower()
+
+        if not text:
+            return "Please say something so I can help."
+        if "hello" in lower or "hi" in lower:
+            return "Hello! I can generate images, analyze images, search the web, synthesize speech, transcribe audio, and keep your session history for you."
+        if "how are you" in lower:
+            return "I’m doing well and ready to help."
+        if "bye" in lower or "goodbye" in lower:
+            return "Goodbye! Your session is saved and I’ll be ready when you return."
+        return (
+            f"You said: '{text}'. I can help with voice, image generation, image reading, web search, file actions, "
+            "and more as long as the feature is enabled in config/features.json."
+        )
+
+    def respond(self, user_message: str, session_id: str = "default") -> str:
+        session = self.session_manager.load_session(session_id)
+        session.add_user_message(user_message)
+
+        tool_name = self._guess_tool(user_message)
+        if tool_name:
+            result = self._dispatch_tool(tool_name, user_message)
+            response = json.dumps(result, indent=2) if isinstance(result, dict) else str(result)
+        else:
+            response = self._default_reply(user_message)
+
+        session.add_assistant_message(response)
+        self.session_manager.save_session(session)
+        self.history_store.append(session_id, "user", user_message)
+        self.history_store.append(session_id, "assistant", response)
+        return response
+
+    def resume_last_session(self):
+        session = self.session_manager.load_last_session()
+        return session
+
+    def list_sessions(self):
+        return self.session_manager.list_sessions()

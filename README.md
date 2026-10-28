@@ -1,51 +1,64 @@
-# FP Chatbot Edition 1
+# FP Gemini Edition 1
 
-A lightweight Python chatbot project with a modular architecture for chat orchestration, memory, safety, and tool use.
+A modular Python chatbot starter with a feature-toggle system for multi-modal tools.
 
-## Features
+## Included capabilities
 
-- CLI chat loop
-- session-based memory
-- prompt building and local response generation
-- simple safety validation layer
-- tool registry and extensible architecture
-- pytest-based tests
+- chat conversation with session resume
+- conversation history saved to file
+- JSON-driven feature enablement
+- TTS support
+- STT support
+- image generation
+- image reading
+- web search
+- voice cloning
+- calculator
+- file editing helpers
+- external API hooks
 
-## Requirements
+## Features config
 
-- Python 3.10+
+The feature list is controlled in `config/features.json`.
 
-## Quick start
+Example:
 
-1. Create and activate a virtual environment
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
+```json
+{
+  "enabled_tools": {
+    "tts": true,
+    "stt": true,
+    "image_gen": true,
+    "image_read": true,
+    "web_search": true
+  }
+}
+```
 
-2. Install dependencies
-   ```bash
-   pip install -r requirements.txt
-   ```
+Set any tool to `false` to disable it.
 
-3. Start the app
-   ```bash
-   python run.py
-   ```
+## Run the app
 
-4. Type messages in the terminal and press Ctrl+C to exit.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python run.py
+```
 
-## Environment
+Then ask things like:
+- create a voice with a specific tone
+- generate an image of a cyberpunk city
+- read an image file
+- search the web for AI news
+- transcribe audio
+- calculate a math expression
 
-Copy `.env.example` to `.env` and update values if needed.
+## Session persistence
 
-## Project layout
+The app saves session data to `data/sessions/` and chat history to `data/chat_history.jsonl`.
+Type `resume` in the CLI to continue the most recent session.
 
-- `app/` - terminal app and chatbot logic
-- `core/` - config, runtime, sessions
-- `memory/` - chat memory
-- `agent/` - orchestrator and routing
-- `safety/` - input/output moderation
-- `tools/` - reusable capabilities
-- `model/` - prompt and response generation
-- `tests/` - automated checks
+## Architecture
+
+This project is structured so the interface, session management, tool registry, and feature toggles are separated into independent modules.

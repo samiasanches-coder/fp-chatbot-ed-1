@@ -1,0 +1,20 @@
+{
+  "enabled_tools": {
+    "tts": true,
+    "stt": true,
+    "image_gen": true,
+    "image_read": true,
+    "web_search": true,
+    "voice_clone": true,
+    "file_editor": true,
+    "browser_search": true,
+    "calculator": true,
+    "external_api": true
+  },
+  "chat": {
+    "save_history": true,
+    "history_path": "data/chat_history.jsonl",
+    "session_dir": "data/sessions",
+    "max_history": 200
+  }
+}

@@ -1,22 +1,27 @@
-from dataclasses import dataclass, field
-
-from agent.orchestrator import Orchestrator
-from memory.short_term_memory import ShortTermMemory
-from safety.input_guard import InputGuard
+from pathlib import Path
+import json
 
 
-@dataclass
-class Chatbot:
-    orchestrator: Orchestrator = field(default_factory=Orchestrator)
-    memory: ShortTermMemory = field(default_factory=ShortTermMemory)
-    guard: InputGuard = field(default_factory=InputGuard)
+class ChatHistoryStore:
+    def __init__(self, path: str = "data/chat_history.jsonl"):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    def respond(self, user_message: str) -> str:
-        validation = self.guard.validate(user_message)
-        if not validation["safe"]:
-            return validation["message"]
+    def append(self, session_id: str, role: str, message: str):
+        entry = {"session_id": session_id, "role": role, "message": message}
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry) + "\n")
 
-        self.memory.add(user_message)
-        result = self.orchestrator.handle(user_message)
-        self.memory.add(result["response"])
-        return result["response"]
+    def read(self, session_id: str):
+        if not self.path.exists():
+            return []
+        entries = []
+        with self.path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                item = json.loads(line)
+                if item.get("session_id") == session_id:
+                    entries.append(item)
+        return entries

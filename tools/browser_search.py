@@ -1,43 +1,48 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from urllib.parse import quote_plus
 
 import requests
+from bs4 import BeautifulSoup
 
 from tools.base_tool import BaseTool
 
 
-class VisionTool(BaseTool):
-    name = "image_read"
+class BrowserSearchTool(BaseTool):
+    name = "web_search"
 
     def run(self, text: str):
-        image_path = Path("data/generated/images/generated_image.png")
-        if not image_path.exists():
-            return {
-                "tool": self.name,
-                "status": "enabled",
-                "summary": "No image exists yet. Generate one first with the image generation tool.",
-            }
-
-        api_key = os.getenv("DEEPSEEK_API_KEY", "")
-        if api_key:
+        query = text.replace("search the web for", "").replace("search for", "").replace("web search", "").replace("look up", "").strip() or "latest AI news"
+        tavily_api_key = os.getenv("TAVILY_API_KEY", "")
+        if tavily_api_key:
             try:
-                with open(image_path, "rb") as fh:
-                    files = {"image": (image_path.name, fh, "image/png")}
-                    headers = {"Authorization": f"Bearer {api_key}"}
-                    response = requests.post("https://api.deepseek.com/v1/vision", headers=headers, files=files, timeout=30)
-                    response.raise_for_status()
-                    payload = response.json()
-                    return {"tool": self.name, "status": "enabled", "summary": payload.get("content") or payload.get("text") or "Image analyzed successfully.", "image_path": str(image_path)}
+                response = requests.post(
+                    "https://api.tavily.com/search",
+                    json={"api_key": tavily_api_key, "query": query, "max_results": 5},
+                    timeout=30,
+                )
+                response.raise_for_status()
+                payload = response.json()
+                return {"tool": self.name, "status": "enabled", "query": query, "results": payload.get("results", [])}
             except Exception as exc:
-                return {"tool": self.name, "status": "error", "message": str(exc), "image_path": str(image_path)}
+                return {"tool": self.name, "status": "error", "query": query, "message": str(exc)}
 
+        url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
         try:
-            from PIL import Image
-            with Image.open(image_path) as img:
-                width, height = img.size
-                mode = img.mode
-            return {"tool": self.name, "status": "enabled", "summary": f"Image read successful. Size: {width}x{height}, mode: {mode}.", "image_path": str(image_path)}
+            page = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            page.raise_for_status()
+            soup = BeautifulSoup(page.text, "html.parser")
+            results = []
+            for item in soup.select(".result")[:5]:
+                title = item.select_one(".result__title")
+                snippet = item.select_one(".result__snippet")
+                link = item.select_one("a")
+                results.append({
+                    "title": title.get_text(" ", strip=True) if title else "",
+                    "snippet": snippet.get_text(" ", strip=True) if snippet else "",
+                    "url": link.get("href", "") if link else "",
+                })
+            return {"tool": self.name, "status": "enabled", "query": query, "results": results}
         except Exception as exc:
-            return {"tool": self.name, "status": "enabled", "summary": f"Basic image metadata fallback: {exc}", "image_path": str(image_path)}
+            return {"tool": self.name, "status": "error", "query": query, "message": str(exc)}

@@ -1,33 +1,25 @@
-from __future__ import annotations
-
 import json
 from pathlib import Path
 
 
-class ChatHistoryStore:
-    def __init__(self, path: str = "data/chat_history.jsonl"):
-        self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+class ToolRegistry:
+    def __init__(self, features_path: str = "config/features.json"):
+        self.features_path = Path(features_path)
+        self.enabled_tools = self._load_enabled_tools()
+        self.tools = {}
 
-    def append(self, session_id: str, role: str, message: str):
-        entry = {
-            "session_id": session_id,
-            "role": role,
-            "message": message,
-        }
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(entry) + "\n")
+    def _load_enabled_tools(self):
+        if not self.features_path.exists():
+            return {}
+        payload = json.loads(self.features_path.read_text(encoding="utf-8"))
+        return payload.get("enabled_tools", {})
 
-    def read(self, session_id: str):
-        if not self.path.exists():
-            return []
-        entries = []
-        with self.path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                line = line.strip()
-                if not line:
-                    continue
-                item = json.loads(line)
-                if item.get("session_id") == session_id:
-                    entries.append(item)
-        return entries
+    def register(self, tool_name: str, tool_instance):
+        if self.enabled_tools.get(tool_name, False):
+            self.tools[tool_name] = tool_instance
+
+    def get(self, tool_name: str):
+        return self.tools.get(tool_name)
+
+    def list_tools(self):
+        return sorted(self.tools.keys())

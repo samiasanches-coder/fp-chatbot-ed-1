@@ -7,9 +7,9 @@
     "web_search": true,
     "voice_clone": true,
     "file_editor": true,
-    "browser_search": true,
     "calculator": true,
-    "external_api": true
+    "external_api": true,
+    "browser_search": true
   },
   "chat": {
     "save_history": true,

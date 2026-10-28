@@ -1,15 +1,14 @@
+from pathlib import Path
+
 from tools.base_tool import BaseTool
 
 
-class CalculatorPlugin(BaseTool):
-    name = "calculator"
+class FileEditorTool(BaseTool):
+    name = "file_editor"
 
     def run(self, text: str):
-        expression = text.replace("calculate", "").replace("math", "").strip()
-        if not expression:
-            return {"tool": self.name, "status": "enabled", "result": "No expression provided."}
-        try:
-            result = eval(expression, {}, {})
-        except Exception as exc:
-            result = str(exc)
-        return {"tool": self.name, "status": "enabled", "expression": expression, "result": result}
+        target = Path("data/generated/files/edited_file.txt")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        content = text.replace("write file", "").replace("edit file", "").replace("create file", "").strip() or "This file was created by the chatbot file editor tool."
+        target.write_text(content, encoding="utf-8")
+        return {"tool": self.name, "status": "enabled", "path": str(target), "message": "File written successfully."}

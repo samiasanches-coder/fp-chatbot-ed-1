@@ -1,35 +1,29 @@
-from rich.console import Console
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 from app.chatbot import Chatbot
 
-console = Console()
+app = FastAPI(title="FP Gemini Edition 1 API")
+chatbot = Chatbot()
 
 
-def main():
-    console.print("[bold green]FP Gemini Edition 1[/bold green]")
-    console.print("Type 'exit' to quit. Type 'resume' to continue your last session.\n")
-
-    chatbot = Chatbot()
-    session_id = "default"
-
-    while True:
-        user_input = console.input("You: ")
-        text = user_input.strip()
-        if text.lower() in {"exit", "quit", "bye"}:
-            console.print("Goodbye!")
-            break
-        if text.lower() == "resume":
-            last_session = chatbot.resume_last_session()
-            console.print(f"Resuming session: {last_session.session_id}")
-            if last_session.user_message_history:
-                console.print("Previous messages:")
-                for msg in last_session.user_message_history:
-                    console.print(f"  - {msg}")
-            continue
-
-        response = chatbot.respond(text, session_id=session_id)
-        console.print(f"Assistant: {response}")
+class ChatRequest(BaseModel):
+    session_id: str = "default"
+    message: str
 
 
-if __name__ == "__main__":
-    main()
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "fp-gemini-edition-1"}
+
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    response = chatbot.respond(request.message, session_id=request.session_id)
+    return {"session_id": request.session_id, "response": response, "status": "ok"}
+
+
+@app.get("/sessions/{session_id}")
+def get_session(session_id: str):
+    session = chatbot.session_manager.load_session(session_id)
+    return session.to_dict()
